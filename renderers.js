@@ -1,6 +1,6 @@
-// Renderers
 // More languages can be supported later, just install
-// a parsed and add it to `renderContent`.
+// a parsed and add it to `renderContent` 
+// (see render pipeline in main file).
 
 const { md2gemini } = await import("gemdown");
 const { marked } = await import("marked");

@@ -2,16 +2,14 @@
 
 const { Liquid } = await import("liquidjs");
 const yaml = await import("js-yaml");
+const fs = await import("node:fs");
 const path = await import("node:path");
 const { md2gemini, md2html } = await import("./renderers");
 
 // MAGIC!!
 
 async function $(base, ...interpolated) {
-  const command = base.reduce(
-    (acc, str, i) => acc + str + (interpolated[i] || ""),
-    ""
-  );
+  const command = base.reduce((acc, str, i) => acc + str + (interpolated[i] || ""), "");
 
   const proc = Bun.spawn(command.split(" "));
   const response = await new Response(proc.stdout).text();
@@ -24,10 +22,10 @@ async function $(base, ...interpolated) {
 
 // Configuration
 
-const currentDirectory = await $`pwd`;
-const CONFIG_FILE = `${currentDirectory}/config.yaml`;
-const TEMPLATES_DIR = `${currentDirectory}/templates`;
-const DESTINATION_DIR = `${currentDirectory}/dist`;
+const PWD = await $`pwd`;
+const CONFIG_FILE = `${PWD}/config.yaml`;
+const TEMPLATES_DIR = `${PWD}/templates`;
+const DESTINATION_DIR = `${PWD}/dist`;
 const EXT = ".txt";
 
 const availableOutputs = await $`ls ${TEMPLATES_DIR}`;
@@ -36,135 +34,127 @@ const globalVariables = await parseConfigFile();
 console.log(`Using outputs: ${availableOutputs.join(", ")}`);
 
 const filePathsToProcess = await listContentFiles();
-const contentFiles = await Promise.all(filePathsToProcess.map(prepareFile));
+const contentFiles = await Promise.all(filePathsToProcess.map(frontmatter));
 
 for (const output of availableOutputs) {
+  await builtOutput(output);
+}
+
+async function listContentFiles() {
+  // This monstrosity recursively lists all files in the current directory 
+  // ending with the configured extension for content,
+  // but skips the config file and templates/dist directories.
+
+  return await listDirectory(PWD, `-type d ( -name ${path.basename(TEMPLATES_DIR)} -o -name ${path.basename(DESTINATION_DIR)} ) -prune -o -type f -name *${EXT} ! -name ${path.basename(CONFIG_FILE)} -print`);  
+}
+
+async function builtOutput(output) {
   await cleanOutput(output);
 
   const templatesDirectory = `${TEMPLATES_DIR}/${output}`;
   const destinationDirectory = `${DESTINATION_DIR}/${output}`;
-  const templates = await getTemplates();
   const templateEngine = new Liquid({ root: templatesDirectory });
 
   let pages = [];
 
-  await renderPages();
-  await renderIndexes();
+  let defaultTemplatePath = await getTemplatePath(templatesDirectory, "default");
+  let defaultParsedTemplate = await parseTemplate(templateEngine, defaultTemplatePath);
 
-  async function renderPages() {
-    let template = await getTemplate("default");
+  listPages().forEach(({ filePath, variables }) => {
+    variables = parse(variables, filePath, defaultTemplatePath)
+    pages.push(variables);
 
-    listPages().forEach(({ filePath, variables }) => {
-      variables.url = generateURL(template, filePath, variables);
-      variables.content_rendered = renderContent(template, variables.content);
-      pages.push(variables);
-      renderTemplate(template, variables);
-    });
+    render(templateEngine, defaultTemplatePath, defaultParsedTemplate, variables, destinationDirectory);
+  });
 
-    return;
-  }
+  let indexTemplatePath = await getTemplatePath(templatesDirectory, "index");
+  let indexParsedTemplate = await parseTemplate(templateEngine, indexTemplatePath);
 
-  async function renderIndexes() {
-    let template = await getTemplate("index");
+  listIndexes().forEach(({ filePath, variables }) => {
+    variables = parse(variables, filePath, indexTemplatePath);
+    variables.pages = pages;
 
-    listIndexes().forEach(({ filePath, variables }) => {
-      variables.url = generateURL(template, filePath, variables);
-      variables.content_rendered = renderContent(template, variables.content);
-      variables.pages = pages;
-      renderTemplate(template, variables);
-    });
+    render(templateEngine, indexTemplatePath, indexParsedTemplate, variables, destinationDirectory);
+  });
 
-    return;
-  }
-
-  function generateURL(template, filePath, variables) {
-    let relativePath = path.relative(currentDirectory, filePath);
-    let generatedPath = "/" + path.join(path.dirname(relativePath), path.basename(relativePath, EXT))
-
-    let finalPath = variables.path || generatedPath;
-    let templateExtension = path.extname(template.path) || ".html";
-
-    return `${finalPath}${templateExtension}`;
-  }
-
-  function renderContent(template, sourceContent) {
-    switch (path.extname(template.path) || ".html") {
-      case ".html":
-      case ".xml":
-        return md2html(sourceContent);
-
-      case ".gmi":
-        return md2gemini(sourceContent);
-
-      case ".txt":
-      case ".md":
-      default:
-        return sourceContent;
-    }
-  }
-
-  function renderTemplate(template, variables) {
-    if (template.parsed) {
-      templateEngine.render(template.parsed, variables).then((rendered) => {
-        let finalPath = `${destinationDirectory}${variables.url}`;
-        console.log(`Writing template '${template.path}' to '${finalPath}'`);
-
-        // This runs in async. We're not doing anything with the result,
-        // so that's why there's not await.
-        writeFileAndCreatePath(finalPath, rendered);
-      });
-    }
-  }
-
-  async function getTemplates() {
-    const templates = await $`find ${templatesDirectory}`;
-  
-    if (templates == "") return [];
-    return templates;
-  }
-
-  async function getTemplate(name) {
-    const templatePath = templates.find(
-      (template) => path.basename(template, path.extname(template)) == name
-    );
-
-    if (!templatePath) return {};
-
-    const content = await readFile(templatePath);
-    const parsed = templateEngine.parse(content);
-
-    return { path: templatePath, parsed: parsed };
-  }
+  // This is async, but because I don't do anything with the output, I don't await it.
+  copyStaticFiles(templatesDirectory, destinationDirectory);
 }
 
-// Files
+// Render pipeline
 
-async function listContentFiles() {
-  // This monstrosity recursively lists all files in the current directory ending with the configured extensions,
-  // but skips the config file and templates directory.
-  let paths = await $`find ${currentDirectory} -type d ( -name ${path.basename(
-    TEMPLATES_DIR
-  )} -o -name ${path.basename(DESTINATION_DIR)} )  -prune -o -type f -name *${EXT} ! -name ${path.basename(
-    CONFIG_FILE
-  )} -print`;
-
-  if (paths == "") return [];
-  return paths;
-}
-
-async function prepareFile(filePath) {
+async function frontmatter(filePath) {
   const frontmatterVariables = await parseFrontmatterVariables(filePath);
 
   let variables = { ...globalVariables, ...frontmatterVariables };
   return { filePath, variables };
 }
 
+function parse(variables, filePath, defaultTemplatePath) {
+  variables.url = generateURL(defaultTemplatePath, filePath, variables);
+  variables.content_rendered = renderContent(defaultTemplatePath, variables.content);
+
+  return variables;
+}
+
+function generateURL(templatePath, filePath, variables) {
+  let relativePath = path.relative(PWD, filePath);
+  let generatedPath = `/${path.join(path.dirname(relativePath), path.basename(relativePath, EXT))}`;
+
+  let finalPath = variables.path || generatedPath;
+  let templateExtension = path.extname(templatePath) || ".html";
+
+  return `${finalPath}${templateExtension}`;
+}
+
+function renderContent(templatePath, sourceContent) {
+  switch (path.extname(templatePath) || ".html") {
+    case ".html":
+    case ".xml":
+      return md2html(sourceContent);
+
+    case ".gmi":
+      return md2gemini(sourceContent);
+
+    case ".txt":
+    case ".md":
+    default:
+      return sourceContent;
+  }
+}
+
+function render(
+  templateEngine,
+  templatePath,
+  parsedTemplate,
+  variables,
+  destinationDirectory
+) {
+  if (parsedTemplate) {
+    templateEngine.render(parsedTemplate, variables).then((rendered) => {
+      let finalPath = `${destinationDirectory}${variables.url}`;
+      console.log(`Writing template '${templatePath}' to '${finalPath}'`);
+
+      // This runs in async. We're not doing anything with the result,
+      // so that's why there's not await.
+      writeFileAndCreatePath(finalPath, rendered);
+    });
+  }
+}
+
+function copyStaticFiles(templatesDirectory, destinationDirectory) {
+  const staticFiles = `${templatesDirectory}/static`;
+  if (fs.existsSync(staticFiles)) $`cp -r ${staticFiles}/. ${destinationDirectory}`;  
+}
+
+// Content files
+
 function listPages() {
-  return contentFiles.filter(({ filePath, variables }) => !isIndex(filePath));
+  return contentFiles.filter(({ filePath }) => !isIndex(filePath));
 }
 
 function listIndexes() {
-  return contentFiles.filter(({ filePath, variables }) => isIndex(filePath));
+  return contentFiles.filter(({ filePath }) => isIndex(filePath));
 }
 
 function isIndex(filePath) {
@@ -178,7 +168,7 @@ async function parseConfigFile() {
     const config = await readFile(CONFIG_FILE);
     return yaml.load(config);
   } catch {
-    return {}
+    return {};
   }
 }
 
@@ -203,7 +193,24 @@ async function cleanOutput(output) {
   await $`mkdir -p ${DESTINATION_DIR}/${output}`;
 }
 
-// Helpers
+async function getTemplatePath(templatesDirectory, templateName) {
+  const templates = await listDirectory(templatesDirectory);
+  const templatePath = templates.find((template) => path.basename(template, path.extname(template)) == templateName);
+
+  return templatePath;
+}
+
+async function parseTemplate(templateEngine, templatePath) {
+  // If the template doesn't exist, we don't render a template.
+  // Therefore, we return nothing here and then later check if
+  // parsedTemplate exists.
+  if(templatePath) {
+    const content = await readFile(templatePath);
+    return templateEngine.parse(content);
+  }
+}
+
+// File system
 
 async function readFile(path) {
   const file = Bun.file(path);
@@ -216,4 +223,11 @@ async function writeFileAndCreatePath(filePath, content) {
   Bun.write(filePath, content).catch((e) => {
     throw `Writing '${filePath}' failed with '${e}' :(`;
   });
+}
+
+async function listDirectory(directory, args) {
+  let paths = await $`find ${directory} ${args} -type f`;
+
+  if (paths == "") return [];
+  return paths;
 }

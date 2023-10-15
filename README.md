@@ -33,6 +33,10 @@ In the case of an index, there is one more variable:
 
 - `pages`: a variable that contains a list of pages. A page is an object that contains the frontmatter from the corresponding content file and the special variables listed above.
 
+## Static files
+
+All files placed in the static directory inside an output subdirectory will be copied over to the corresponding subdirectory in the `dist` directory.
+
 ## Renderers
 
 Depending on the extension of the template, your content will be translated either to HTML (`.html` or `.xml`), gemtext (`.gmi`) or kept as-is (`.txt`, `.md`, and everything else).
