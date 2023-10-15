@@ -78,7 +78,10 @@ for (const output of availableOutputs) {
   }
 
   function generateURL(template, filePath, variables) {
-    let finalPath = variables.path || path.basename(filePath, EXT);
+    let relativePath = path.relative(currentDirectory, filePath);
+    let generatedPath = "/" + path.join(path.dirname(relativePath), path.basename(relativePath, EXT))
+
+    let finalPath = variables.path || generatedPath;
     let templateExtension = path.extname(template.path) || ".html";
 
     return `${finalPath}${templateExtension}`;
@@ -103,7 +106,7 @@ for (const output of availableOutputs) {
   function renderTemplate(template, variables) {
     if (template.parsed) {
       templateEngine.render(template.parsed, variables).then((rendered) => {
-        let finalPath = `${destinationDirectory}/${variables.url}`;
+        let finalPath = `${destinationDirectory}${variables.url}`;
         console.log(`Writing template '${template.path}' to '${finalPath}'`);
 
         // This runs in async. We're not doing anything with the result,
@@ -141,7 +144,7 @@ async function listContentFiles() {
   // but skips the config file and templates directory.
   let paths = await $`find ${currentDirectory} -type d ( -name ${path.basename(
     TEMPLATES_DIR
-  )} -prune ) -o -type f -name *${EXT} ! -name ${path.basename(
+  )} -o -name ${path.basename(DESTINATION_DIR)} )  -prune -o -type f -name *${EXT} ! -name ${path.basename(
     CONFIG_FILE
   )} -print`;
 
