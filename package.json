@@ -6,7 +6,13 @@
     "bun-types": "latest"
   },
   "dependencies": {
+    "gemdown": "^0.7.0",
+    "hljs": "^6.2.3",
     "js-yaml": "^4.1.0",
-    "liquidjs": "^10.9.2"
+    "liquidjs": "^10.9.2",
+    "marked": "^9.1.2",
+    "marked-gfm-heading-id": "^3.1.0",
+    "marked-highlight": "^2.0.6",
+    "marked-smartypants": "^1.1.3"
   }
 }

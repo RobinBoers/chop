@@ -2,8 +2,8 @@
 
 const { Liquid } = await import("liquidjs");
 const yaml = await import("js-yaml");
-const fs = await import("node:fs");
 const path = await import("node:path");
+const { md2gemini, md2html } = await import("./renderers");
 
 // MAGIC!!
 
@@ -43,7 +43,7 @@ for (const output of availableOutputs) {
 
   const templatesDirectory = `${TEMPLATES_DIR}/${output}`;
   const destinationDirectory = `${DESTINATION_DIR}/${output}`;
-  const templates = await $`find ${templatesDirectory}`;
+  const templates = await getTemplates();
   const templateEngine = new Liquid({ root: templatesDirectory });
 
   let pages = [];
@@ -56,6 +56,7 @@ for (const output of availableOutputs) {
 
     listPages().forEach(({ filePath, variables }) => {
       variables.url = generateURL(template, filePath, variables);
+      variables.content_rendered = renderContent(template, variables.content);
       pages.push(variables);
       renderTemplate(template, variables);
     });
@@ -68,6 +69,7 @@ for (const output of availableOutputs) {
 
     listIndexes().forEach(({ filePath, variables }) => {
       variables.url = generateURL(template, filePath, variables);
+      variables.content_rendered = renderContent(template, variables.content);
       variables.pages = pages;
       renderTemplate(template, variables);
     });
@@ -82,17 +84,40 @@ for (const output of availableOutputs) {
     return `${finalPath}${templateExtension}`;
   }
 
+  function renderContent(template, sourceContent) {
+    switch (path.extname(template.path) || ".html") {
+      case ".html":
+      case ".xml":
+        return md2html(sourceContent);
+
+      case ".gmi":
+        return md2gemini(sourceContent);
+
+      case ".txt":
+      case ".md":
+      default:
+        return sourceContent;
+    }
+  }
+
   function renderTemplate(template, variables) {
-      if (template.parsed) {
-        templateEngine.render(template.parsed, variables).then((rendered) => {
-          let finalPath = `${destinationDirectory}/${variables.url}`;
-          console.log(`Writing template '${template.path}' to '${finalPath}'`);
-          
-          // This runs in async. We're not doing anything with the result,
-          // so that's why there's not await.
-          writeFileAndCreatePath(finalPath, rendered);
-        });
-      }
+    if (template.parsed) {
+      templateEngine.render(template.parsed, variables).then((rendered) => {
+        let finalPath = `${destinationDirectory}/${variables.url}`;
+        console.log(`Writing template '${template.path}' to '${finalPath}'`);
+
+        // This runs in async. We're not doing anything with the result,
+        // so that's why there's not await.
+        writeFileAndCreatePath(finalPath, rendered);
+      });
+    }
+  }
+
+  async function getTemplates() {
+    const templates = await $`find ${templatesDirectory}`;
+  
+    if (templates == "") return [];
+    return templates;
   }
 
   async function getTemplate(name) {
@@ -121,7 +146,6 @@ async function listContentFiles() {
   )} -print`;
 
   if (paths == "") return [];
-
   return paths;
 }
 
@@ -147,8 +171,12 @@ function isIndex(filePath) {
 // Parsing
 
 async function parseConfigFile() {
-  const config = await readFile(CONFIG_FILE);
-  return yaml.load(config);
+  try {
+    const config = await readFile(CONFIG_FILE);
+    return yaml.load(config);
+  } catch {
+    return {}
+  }
 }
 
 async function parseFrontmatterVariables(filePath) {
@@ -182,8 +210,7 @@ async function readFile(path) {
 async function writeFileAndCreatePath(filePath, content) {
   await $`mkdir -p ${path.dirname(filePath)}`;
 
-  Bun.write(filePath, content)
-    .catch((e) => {
-      throw `Writing '${filePath}' failed with '${e}' :(`
-    });
+  Bun.write(filePath, content).catch((e) => {
+    throw `Writing '${filePath}' failed with '${e}' :(`;
+  });
 }
