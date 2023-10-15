@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "gemdown": "^0.7.0",
-    "hljs": "^6.2.3",
+    "highlight.js": "^10.00.0",
     "js-yaml": "^4.1.0",
     "liquidjs": "^10.9.2",
     "marked": "^9.1.2",

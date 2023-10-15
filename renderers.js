@@ -7,7 +7,7 @@ const { marked } = await import("marked");
 const { gfmHeadingId } = await import("marked-gfm-heading-id");
 const { markedSmartypants } = await import("marked-smartypants");
 const { markedHighlight } = await import("marked-highlight");
-const hljs = await import("hljs");
+const hljs = await import("highlight.js");
 
 marked.use(gfmHeadingId());
 marked.use(markedSmartypants());
