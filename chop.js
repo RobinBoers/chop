@@ -114,7 +114,7 @@ function renderContent(templatePath, sourceContent) {
       return md2html(sourceContent);
 
     case ".gmi":
-      return md2gemini(sourceContent);
+      return md2gemini(sourceContent, { renderBoldItalic: true });
 
     case ".txt":
     case ".md":

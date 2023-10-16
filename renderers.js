@@ -2,7 +2,7 @@
 // a parsed and add it to `renderContent` 
 // (see render pipeline in main file).
 
-const { md2gemini } = await import("gemdown");
+const gemdown = await import("gemdown");
 const { marked } = await import("marked");
 const { gfmHeadingId } = await import("marked-gfm-heading-id");
 const { markedSmartypants } = await import("marked-smartypants");
@@ -22,6 +22,7 @@ marked.use(
   })
 );
 
-let md2html = marked.parse;
+let md2gemini = gemdown.parse;
+let md2html = marked;
 
-export { md2gemini, md2html };
+export { md2gemini, md2html }

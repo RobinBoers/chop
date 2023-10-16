@@ -6,7 +6,7 @@
     "bun-types": "latest"
   },
   "dependencies": {
-    "gemdown": "^0.7.0",
+    "gemdown": "RobinBoers/gemdown",
     "highlight.js": "^10.00.0",
     "js-yaml": "^4.1.0",
     "liquidjs": "^10.9.2",
