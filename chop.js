@@ -101,10 +101,7 @@ function generateURL(templatePath, filePath, variables) {
   let relativePath = path.relative(PWD, filePath);
   let generatedPath = `/${path.join(path.dirname(relativePath), path.basename(relativePath, EXT))}`;
 
-  let finalPath = variables.path || generatedPath;
-  let templateExtension = path.extname(templatePath) || ".html";
-
-  return `${finalPath}${templateExtension}`;
+  return variables.path || generatedPath;
 }
 
 function renderContent(templatePath, sourceContent) {
@@ -132,7 +129,8 @@ function render(
 ) {
   if (parsedTemplate) {
     templateEngine.render(parsedTemplate, variables).then((rendered) => {
-      let finalPath = `${destinationDirectory}${variables.url}`;
+      const templateExtension = path.extname(templatePath);
+      let finalPath = `${destinationDirectory}${variables.url}${templateExtension}`;
       console.log(`Writing template '${templatePath}' to '${finalPath}'`);
 
       // This runs in async. We're not doing anything with the result,
