@@ -67,7 +67,7 @@ async function builtOutput(output) {
     render(templateEngine, defaultTemplatePath, defaultParsedTemplate, variables, destinationDirectory);
   });
 
-  let indexTemplatePath = await getTemplatePath(templatesDirectory, "index");
+  let indexTemplatePath = (await getTemplatePath(templatesDirectory, "index")) || defaultTemplatePath;
   let indexParsedTemplate = await parseTemplate(templateEngine, indexTemplatePath);
 
   listIndexes().forEach(({ filePath, variables }) => {
