@@ -33,6 +33,12 @@ In the case of an index, there is one more variable:
 
 - `pages`: a variable that contains a list of pages. A page is an object that contains the frontmatter from the corresponding content file and the special variables listed above.
 
+## Special variables
+
+These variables have special behavoir, if specified:
+
+- `path`: if specified in the front matter of a post, it will be used to generate the final URL. It is relative to the site root (aka the directory the site gets put in).
+
 ## Static files
 
 All files placed in the static directory inside an output subdirectory will be copied over to the corresponding subdirectory in the `dist` directory.
