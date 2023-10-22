@@ -21,19 +21,11 @@ After building, the assembled files will be put in a `dist` directory. It also c
 
 Global variables can be defined in the optional `config.yaml` file. Variables defined here are available in posts and templates.
 
-## Special variables
-
-These variables have a special purpose:
-
-- `site_prefix`: this string will be prepended to every `url` variable (see next section), if it's set in global config.
-- `path`: if set in frontmatter, this will be the final path of the file, relative to the site root.
-
 ### Builtin variables
 
 The following variables are exposed by default:
 
 - `url`: the (relative) URL of the final resource.
-- `url_unprefixed`: the (relative) URL, without the global prefix.
 - `content`: the plain CommonMark content.
 - `content_rendered`: the HTML or gemtext rendered variant of the content.
 

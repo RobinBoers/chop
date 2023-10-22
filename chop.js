@@ -91,22 +91,17 @@ async function frontmatter(filePath) {
 }
 
 function parse(variables, filePath, defaultTemplatePath) {
-  variables = prepareURLs(defaultTemplatePath, filePath, variables);
+  variables.url = generateURL(defaultTemplatePath, filePath, variables);
   variables.content_rendered = renderContent(defaultTemplatePath, variables.content);
 
   return variables;
 }
 
-function prepareURLs(templatePath, filePath, variables) {
+function generateURL(templatePath, filePath, variables) {
   let relativePath = path.relative(PWD, filePath);
-  let generatedPath = "/" + path.join(path.dirname(relativePath), path.basename(relativePath, EXT));
+  let generatedPath = `/${path.join(path.dirname(relativePath), path.basename(relativePath, EXT))}`;
 
-  let finalPath = variables.path || generatedPath;
-
-  variables.url = (variables.site_prefix || "") + finalPath;
-  variables.url_unprefixed = finalPath; 
-
-  return variables;
+  return variables.path || generatedPath;
 }
 
 function renderContent(templatePath, sourceContent) {
@@ -135,7 +130,7 @@ function render(
   if (parsedTemplate) {
     templateEngine.render(parsedTemplate, variables).then((rendered) => {
       const templateExtension = path.extname(templatePath);
-      let finalPath = `${destinationDirectory}${variables.url_unprefixed}${templateExtension}`;
+      let finalPath = `${destinationDirectory}${variables.url}${templateExtension}`;
       console.log(`Writing template '${templatePath}' to '${finalPath}'`);
 
       // This runs in async. We're not doing anything with the result,
