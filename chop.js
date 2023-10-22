@@ -227,5 +227,6 @@ async function listDirectory(directory, args) {
   let paths = await $`find ${directory} ${args} -type f`;
 
   if (paths == "") return [];
+  if (typeof paths == "string") return [paths];
   return paths;
 }
