@@ -33,7 +33,7 @@ In the case of an index, there is one more variable:
 
 - `pages`: a variable that contains a list of pages. A page is an object that contains the frontmatter from the corresponding content file and the special variables listed above.
 
-## Special variables
+### Special variables
 
 These variables have special behavoir, if specified:
 
