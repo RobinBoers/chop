@@ -60,18 +60,20 @@ async function builtOutput(output) {
   let defaultTemplatePath = await getTemplatePath(templatesDirectory, "default");
   let defaultParsedTemplate = await parseTemplate(templateEngine, defaultTemplatePath);
 
-  listPages().forEach(({ filePath, variables }) => {
-    variables = parse(variables, filePath, defaultTemplatePath)
+  listPages().forEach(variables => {
+    variables = parse(variables, defaultTemplatePath)
     pages.push(variables);
 
     render(templateEngine, defaultTemplatePath, defaultParsedTemplate, variables, destinationDirectory);
   });
 
+  // Try to load index template. 
+  // If it doesn't exist, fall back to the default template.
   let indexTemplatePath = (await getTemplatePath(templatesDirectory, "index")) || defaultTemplatePath;
   let indexParsedTemplate = await parseTemplate(templateEngine, indexTemplatePath);
 
-  listIndexes().forEach(({ filePath, variables }) => {
-    variables = parse(variables, filePath, indexTemplatePath);
+  listIndexes().forEach(variables => {
+    variables = parse(variables, indexTemplatePath);
     variables.pages = pages;
 
     render(templateEngine, indexTemplatePath, indexParsedTemplate, variables, destinationDirectory);
@@ -85,23 +87,32 @@ async function builtOutput(output) {
 
 async function frontmatter(filePath) {
   const frontmatterVariables = await parseFrontmatterVariables(filePath);
+  const path = generatePath(filePath, frontmatterVariables);
 
-  let variables = { ...globalVariables, ...frontmatterVariables };
-  return { filePath, variables };
-}
-
-function parse(variables, filePath, defaultTemplatePath) {
-  variables.url = generateURL(defaultTemplatePath, filePath, variables);
-  variables.content_rendered = renderContent(defaultTemplatePath, variables.content);
+  let variables = { 
+    ...globalVariables, 
+    ...frontmatterVariables, 
+    path: prefixPath(path, globalVariables), 
+    path_unprefixed: path,
+  };
 
   return variables;
 }
 
-function generateURL(templatePath, filePath, variables) {
+function generatePath(filePath, variables) {
   let relativePath = path.relative(PWD, filePath);
   let generatedPath = `/${path.join(path.dirname(relativePath), path.basename(relativePath, EXT))}`;
 
   return variables.path || generatedPath;
+}
+
+function prefixPath(path, variables) {
+  return `${variables.site_prefix || ""}${path}`;
+}
+
+function parse(variables, defaultTemplatePath) {
+  variables.content_rendered = renderContent(defaultTemplatePath, variables.content);
+  return variables;
 }
 
 function renderContent(templatePath, sourceContent) {
@@ -111,7 +122,7 @@ function renderContent(templatePath, sourceContent) {
       return md2html(sourceContent);
 
     case ".gmi":
-      return md2gemini(sourceContent, { renderBoldItalic: true });
+      return md2gemini(sourceContent);
 
     case ".txt":
     case ".md":
@@ -130,7 +141,7 @@ function render(
   if (parsedTemplate) {
     templateEngine.render(parsedTemplate, variables).then((rendered) => {
       const templateExtension = path.extname(templatePath);
-      let finalPath = `${destinationDirectory}${variables.url}${templateExtension}`;
+      let finalPath = `${destinationDirectory}${variables.path_unprefixed}${templateExtension}`;
       console.log(`Writing template '${templatePath}' to '${finalPath}'`);
 
       // This runs in async. We're not doing anything with the result,
@@ -148,11 +159,11 @@ function copyStaticFiles(templatesDirectory, destinationDirectory) {
 // Content files
 
 function listPages() {
-  return contentFiles.filter(({ filePath }) => !isIndex(filePath));
+  return contentFiles.filter(variables => !isIndex(variables.path));
 }
 
 function listIndexes() {
-  return contentFiles.filter(({ filePath }) => isIndex(filePath));
+  return contentFiles.filter(variables => isIndex(variables.path));
 }
 
 function isIndex(filePath) {

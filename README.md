@@ -12,32 +12,37 @@ Templates are placed in the `templates` directory. The `templates` directory sho
 
 The following two files from the subdirectory will be used:
 
-- `index.*`: the file that will be used for content files that have `index` as basename. Meant as an index, listing pages/posts.
+- `index.*`: the file that will be used for content files that have `index` as basename. Meant as an index, listing pages/posts. If it doesn't exist, the `default.*` template will be used.
 - `default.*`: the template that will be used for all other content files.
 
 After building, the assembled files will be put in a `dist` directory. It also contains a subdirectory for every output.
 
 ### Global variables
 
-Global variables can be defined in the optional `config.yaml` file. Variables defined here are available in posts and templates.
+Global variables can be defined in the optional `config.yaml` file. Variables defined here are available in templates.
+
+I'm working on the ability to use variables in content.
+
+### Special variables
+
+These variables have special behavoir, if specified:
+
+- `site_prefix`: if specified in global config, all (relative) URLs (including those in content) will be prefixed with this string.
+
+- `path`: if specified in the front matter of a post, it will be used to generate the final path. It is relative to the site root (aka the directory the site gets put in). Gets prefixed with `site_prefix`.
 
 ### Builtin variables
 
 The following variables are exposed by default:
 
-- `url`: the (relative) URL of the final resource.
+- `path`: the path of the final file, relative to the root of the site, includes the `site_prefix`.
+- `path_unprefixed`: same as `path`, but without prepending the `site_prefix`.
 - `content`: the plain CommonMark content.
 - `content_rendered`: the HTML or gemtext rendered variant of the content.
 
 In the case of an index, there is one more variable:
 
 - `pages`: a variable that contains a list of pages. A page is an object that contains the frontmatter from the corresponding content file and the special variables listed above.
-
-### Special variables
-
-These variables have special behavoir, if specified:
-
-- `path`: if specified in the front matter of a post, it will be used to generate the final URL. It is relative to the site root (aka the directory the site gets put in).
 
 ## Static files
 
