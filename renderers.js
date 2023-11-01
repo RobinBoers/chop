@@ -3,26 +3,51 @@
 // (see render pipeline in main file).
 
 const gemdown = await import("gemdown");
-const { marked } = await import("marked");
-const { gfmHeadingId } = await import("marked-gfm-heading-id");
-const { markedSmartypants } = await import("marked-smartypants");
-const { markedHighlight } = await import("marked-highlight");
-const hljs = await import("highlight.js");
 
-marked.use(gfmHeadingId());
-marked.use(markedSmartypants());
+import { unified } from "unified";
+import {retext} from "retext";
+import retextSmartypants from "retext-smartypants";
+import remarkParse from "remark-parse";
+import remarkLinkRewrite from "remark-link-rewrite";
+import remarkGfm from "remark-gfm";
+import remarkGemoji from "remark-gemoji";
+import smartypants from "remark-smartypants";
+import remarkRehype from "remark-rehype";
+import remarkUnwrapImages from "remark-unwrap-images";
+import rehypeFormat from "rehype-format";
+import rehypeSlug from "rehype-slug";
+import rehypeStringify from "rehype-stringify";
 
-marked.use(
-  markedHighlight({
-    langPrefix: "hljs language-",
-    highlight(code, lang) {
-      const language = hljs.getLanguage(lang) ? lang : "plaintext";
-      return hljs.highlight(code, { language }).value;
-    },
-  })
-);
+const md2gemtext = async function(markdown, options) {
+  const prose = await retext()
+    .use(retextSmartypants)
+    .process(markdown);
 
-let md2gemini = gemdown.parse;
-let md2html = marked;
+  return gemdown.parse(String(prose), options);
+};
 
-export { md2gemini, md2html }
+const md2html = function(markdown, { linkPrefix }) {
+  const prefixURL = function(url) {
+    const isRelative = /^\/(?!\/)/;
+
+    if (isRelative.test(url)) return linkPrefix + url
+    return url
+  }
+
+  return unified()
+    .use(remarkParse)
+    .use(remarkLinkRewrite, { replacer: prefixURL })
+    .use(remarkGfm)
+    .use(remarkGemoji)
+    .use(smartypants)
+    .use(remarkRehype)
+    .use(remarkUnwrapImages)
+    .use(rehypeSlug)
+    .use(rehypeFormat)
+    .use(rehypeStringify)
+    .process(markdown);
+};
+
+const md2txt = (x) => x;
+
+export { md2gemtext, md2html, md2txt }

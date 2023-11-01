@@ -4,7 +4,7 @@ const { Liquid } = await import("liquidjs");
 const yaml = await import("js-yaml");
 const fs = await import("node:fs");
 const path = await import("node:path");
-const { md2gemini, md2html } = await import("./renderers");
+const { md2gemtext, md2html, md2txt } = await import("./renderers");
 
 // MAGIC!!
 
@@ -60,8 +60,8 @@ async function builtOutput(output) {
   let defaultTemplatePath = await getTemplatePath(templatesDirectory, "default");
   let defaultParsedTemplate = await parseTemplate(templateEngine, defaultTemplatePath);
 
-  listPages().forEach(variables => {
-    variables = parse(variables, defaultTemplatePath)
+  await listPages().forEach(async variables => {
+    variables = await prepareVariables(variables, defaultTemplatePath)
     pages.push(variables);
 
     render(templateEngine, defaultTemplatePath, defaultParsedTemplate, variables, destinationDirectory);
@@ -72,8 +72,8 @@ async function builtOutput(output) {
   let indexTemplatePath = (await getTemplatePath(templatesDirectory, "index")) || defaultTemplatePath;
   let indexParsedTemplate = await parseTemplate(templateEngine, indexTemplatePath);
 
-  listIndexes().forEach(variables => {
-    variables = parse(variables, indexTemplatePath);
+  await listIndexes().forEach(async variables => {
+    variables = await prepareVariables(variables, indexTemplatePath);
     variables.pages = pages;
 
     render(templateEngine, indexTemplatePath, indexParsedTemplate, variables, destinationDirectory);
@@ -110,24 +110,30 @@ function prefixPath(path, variables) {
   return `${variables.site_prefix || ""}${path}`;
 }
 
-function parse(variables, defaultTemplatePath) {
-  variables.content_rendered = renderContent(defaultTemplatePath, variables.content);
+async function prepareVariables(variables, templatePath) {
+  variables.content_rendered = await renderContent(templatePath, variables.content, variables.site_prefix);
   return variables;
 }
 
-function renderContent(templatePath, sourceContent) {
+function renderContent(templatePath, sourceContent, linkPrefix) {
+  const options = { linkPrefix };
+  const renderer = rendererForTemplate(templatePath);
+
+  return renderer(sourceContent, options);
+}
+
+function rendererForTemplate(templatePath) {
   switch (path.extname(templatePath) || ".html") {
     case ".html":
     case ".xml":
-      return md2html(sourceContent);
+      return md2html;
 
     case ".gmi":
-      return md2gemini(sourceContent);
+      return md2gemtext;
 
     case ".txt":
-    case ".md":
     default:
-      return sourceContent;
+      return md2txt;
   }
 }
 
@@ -182,17 +188,17 @@ async function parseConfigFile() {
 }
 
 async function parseFrontmatterVariables(filePath) {
-  const documentContent = await readFile(filePath);
+  const documentContent = (await readFile(filePath)).split("---");
 
-  const [empty, frontmatter, content] = documentContent.split("---");
+  const [empty, frontmatter] = documentContent;
 
   if (empty != "")
     throw `Error: failed to parse '${filePath}', invalid frontmatter.`;
 
+  const content = documentContent.slice(2).join("---").trim();
   let frontmatterVariables = yaml.load(frontmatter);
-  frontmatterVariables.content = content.trim();
-
-  return frontmatterVariables;
+  
+  return { ...frontmatterVariables, content: content };
 }
 
 // Outputs
