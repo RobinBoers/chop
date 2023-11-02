@@ -61,7 +61,7 @@ async function builtOutput(output) {
   let defaultParsedTemplate = await parseTemplate(templateEngine, defaultTemplatePath);
 
   await listPages().forEach(async variables => {
-    variables = await prepareVariables(variables, defaultTemplatePath)
+    variables = await parseContent(variables, defaultTemplatePath)
     pages.push(variables);
 
     render(templateEngine, defaultTemplatePath, defaultParsedTemplate, variables, destinationDirectory);
@@ -73,7 +73,7 @@ async function builtOutput(output) {
   let indexParsedTemplate = await parseTemplate(templateEngine, indexTemplatePath);
 
   await listIndexes().forEach(async variables => {
-    variables = await prepareVariables(variables, indexTemplatePath);
+    variables = await parseContent(variables, indexTemplatePath);
     variables.pages = pages;
 
     render(templateEngine, indexTemplatePath, indexParsedTemplate, variables, destinationDirectory);
@@ -110,19 +110,21 @@ function prefixPath(path, variables) {
   return `${variables.site_prefix || ""}${path}`;
 }
 
-async function prepareVariables(variables, templatePath) {
-  variables.content_rendered = await renderContent(templatePath, variables.content, variables.site_prefix);
-  return variables;
+async function parseContent(variables, templatePath) {
+  const converter = converterForTemplate(templatePath);
+  const templateEngine = new Liquid({ 
+    root: path.dirname(templatePath), 
+    extname: path.extname(templatePath)
+  });
+
+  const convertedContent = await converter(variables.content, { linkPrefix: variables.site_prefix });
+  const contentTemplate = await templateEngine.parse(convertedContent);
+  const renderedContent = await templateEngine.render(contentTemplate, variables);
+
+  return { ...variables, content_rendered: renderedContent };
 }
 
-function renderContent(templatePath, sourceContent, linkPrefix) {
-  const options = { linkPrefix };
-  const renderer = rendererForTemplate(templatePath);
-
-  return renderer(sourceContent, options);
-}
-
-function rendererForTemplate(templatePath) {
+function converterForTemplate(templatePath) {
   switch (path.extname(templatePath) || ".html") {
     case ".html":
     case ".xml":

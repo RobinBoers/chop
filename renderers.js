@@ -26,7 +26,7 @@ const md2gemtext = async function(markdown, options) {
   return gemdown.parse(String(prose), options);
 };
 
-const md2html = function(markdown, { linkPrefix }) {
+const md2html = async function(markdown, { linkPrefix }) {
   const prefixURL = function(url) {
     const isRelative = /^\/(?!\/)/;
 
@@ -34,7 +34,7 @@ const md2html = function(markdown, { linkPrefix }) {
     return url
   }
 
-  return unified()
+  const html = await unified()
     .use(remarkParse)
     .use(remarkLinkRewrite, { replacer: prefixURL })
     .use(remarkGfm)
@@ -46,6 +46,8 @@ const md2html = function(markdown, { linkPrefix }) {
     .use(rehypeFormat)
     .use(rehypeStringify)
     .process(markdown);
+
+  return String(html);
 };
 
 const md2txt = (x) => x;
