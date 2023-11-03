@@ -17,10 +17,8 @@
     "remark-gfm": "^4.0.0",
     "remark-link-rewrite": "^1.0.7",
     "remark-rehype": "^11.0.0",
-    "remark-smartypants": "^2.0.0",
     "remark-unwrap-images": "^4.0.0",
-    "retext": "^9.0.0",
-    "retext-smartypants": "^6.0.0",
+    "smartypants": "^0.2.2",
     "unified": "^11.0.4"
   }
 }

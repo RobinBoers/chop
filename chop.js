@@ -2,6 +2,7 @@
 
 const { Liquid } = await import("liquidjs");
 const yaml = await import("js-yaml");
+const { smartypants, smartypantsu } = await import("smartypants");
 const fs = await import("node:fs");
 const path = await import("node:path");
 const { md2gemtext, md2html, md2txt } = await import("./renderers");
@@ -51,6 +52,8 @@ async function listContentFiles() {
 async function builtOutput(output) {
   await cleanOutput(output);
 
+  console.log(`\n==> Building ${output}`)
+
   const templatesDirectory = `${TEMPLATES_DIR}/${output}`;
   const destinationDirectory = `${DESTINATION_DIR}/${output}`;
   const templateEngine = new Liquid({ root: templatesDirectory });
@@ -61,7 +64,7 @@ async function builtOutput(output) {
   let defaultParsedTemplate = await parseTemplate(templateEngine, defaultTemplatePath);
 
   await listPages().forEach(async variables => {
-    variables = await parseContent(variables, defaultTemplatePath)
+    variables = await processContent(variables, defaultTemplatePath)
     pages.push(variables);
 
     render(templateEngine, defaultTemplatePath, defaultParsedTemplate, variables, destinationDirectory);
@@ -73,7 +76,7 @@ async function builtOutput(output) {
   let indexParsedTemplate = await parseTemplate(templateEngine, indexTemplatePath);
 
   await listIndexes().forEach(async variables => {
-    variables = await parseContent(variables, indexTemplatePath);
+    variables = await processContent(variables, indexTemplatePath);
     variables.pages = pages;
 
     render(templateEngine, indexTemplatePath, indexParsedTemplate, variables, destinationDirectory);
@@ -110,32 +113,49 @@ function prefixPath(path, variables) {
   return `${variables.site_prefix || ""}${path}`;
 }
 
-async function parseContent(variables, templatePath) {
-  const converter = converterForTemplate(templatePath);
-  const templateEngine = new Liquid({ 
-    root: path.dirname(templatePath), 
-    extname: path.extname(templatePath)
-  });
+async function processContent(variables, templatePath) {
+  const {converter: convert, educater: educate} = processorsForTemplate(templatePath);
 
-  const convertedContent = await converter(variables.content, { linkPrefix: variables.site_prefix });
-  const contentTemplate = await templateEngine.parse(convertedContent);
-  const renderedContent = await templateEngine.render(contentTemplate, variables);
+  const convertedContent = await convert(variables.content, { linkPrefix: variables.site_prefix });
+
+  let renderedContent = convertedContent;
+
+  if(templatePath) {
+    const templateEngine = new Liquid({ 
+      root: path.dirname(templatePath), 
+      extname: path.extname(templatePath)
+    });
+
+    const contentTemplate = await templateEngine.parse(convertedContent);
+    renderedContent = await templateEngine.render(contentTemplate, variables);
+  }
+
+  const educatedContent = educate(renderedContent);
 
   return { ...variables, content_rendered: renderedContent };
 }
 
-function converterForTemplate(templatePath) {
+function processorsForTemplate(templatePath) {
   switch (path.extname(templatePath) || ".html") {
     case ".html":
     case ".xml":
-      return md2html;
+      return {
+        converter: md2html,
+        educater: (source) => smartypants(source)
+      };
 
     case ".gmi":
-      return md2gemtext;
+      return {
+        converter: md2gemtext,
+        educater: (source) => smartypantsu(source, "de")
+      };
 
     case ".txt":
     default:
-      return md2txt;
+      return {
+        converter: md2txt,
+        educater: (source) => smartypantsu(source, "qde")
+      };
   }
 }
 
@@ -150,7 +170,7 @@ function render(
     templateEngine.render(parsedTemplate, variables).then((rendered) => {
       const templateExtension = path.extname(templatePath);
       let finalPath = `${destinationDirectory}${variables.path_unprefixed}${templateExtension}`;
-      console.log(`Writing template '${templatePath}' to '${finalPath}'`);
+      console.log(`Writing ${variables.path_unprefixed}`);
 
       // This runs in async. We're not doing anything with the result,
       // so that's why there's not await.
