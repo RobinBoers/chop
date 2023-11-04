@@ -95,8 +95,7 @@ async function frontmatter(filePath) {
   let variables = { 
     ...globalVariables, 
     ...frontmatterVariables, 
-    path: prefixPath(path, globalVariables), 
-    path_unprefixed: path,
+    path: path
   };
 
   return variables;
@@ -109,14 +108,14 @@ function generatePath(filePath, variables) {
   return variables.path || generatedPath;
 }
 
-function prefixPath(path, variables) {
-  return `${variables.site_prefix || ""}${path}`;
-}
-
 async function processContent(variables, templatePath) {
   const {converter: convert, educater: educate} = processorsForTemplate(templatePath);
 
-  const convertedContent = await convert(variables.content, { linkPrefix: variables.site_prefix });
+  variables.plugins.forEach(plugin => {
+    variables = { ...variables, plugin.processVariables(variables) }
+  });
+
+  const convertedContent = await convert(variables.content, { plugins: variables.plugins });
 
   let renderedContent = convertedContent;
 
@@ -126,8 +125,7 @@ async function processContent(variables, templatePath) {
       extname: path.extname(templatePath)
     });
 
-    const contentTemplate = await templateEngine.parse(convertedContent);
-    renderedContent = await templateEngine.render(contentTemplate, variables);
+    renderedContent = await templateEngine.parseAndRendeer(convertedContent, variables);
   }
 
   const educatedContent = educate(renderedContent);
