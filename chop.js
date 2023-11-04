@@ -130,9 +130,11 @@ async function processContent(variables, templatePath) {
     renderedContent = await templateEngine.render(contentTemplate, variables);
   }
 
-  const educatedContent = educate(renderedContent);
-
-  return { ...variables, content_rendered: renderedContent };
+  return { 
+    ...variables, 
+    content: educate(variables.content),
+    content_rendered: educate(renderedContent)
+  };
 }
 
 function processorsForTemplate(templatePath) {
@@ -141,7 +143,7 @@ function processorsForTemplate(templatePath) {
     case ".xml":
       return {
         converter: md2html,
-        educater: (source) => smartypants(source)
+        educater: (source) => smartypants(source, "qde")
       };
 
     case ".gmi":
