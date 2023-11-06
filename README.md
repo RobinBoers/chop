@@ -27,16 +27,16 @@ I'm working on the ability to use variables in content.
 
 These variables have special behavoir, if specified:
 
-- `site_prefix`: if specified in global config, all (relative) URLs (including those in content) will be prefixed with this string.
+- `site.prefix`: if specified in global config, all (relative) URLs (including those in content) will be prefixed with this string.
 
-- `path`: if specified in the front matter of a post, it will be used to generate the final path. It is relative to the site root (aka the directory the site gets put in). Gets prefixed with `site_prefix`.
+- `path`: if specified in the front matter of a post, it will be used to generate the final path. It is relative to the site root (aka the directory the site gets put in). Gets prefixed with `site.prefix`.
 
 ### Builtin variables
 
 The following variables are exposed by default:
 
-- `path`: the path of the final file, relative to the root of the site, includes the `site_prefix`.
-- `path_unprefixed`: same as `path`, but without prepending the `site_prefix`.
+- `path`: the path of the final file, relative to the root of the site, includes the `site.prefix`.
+- `path_unprefixed`: same as `path`, but without prepending the `site.prefix`.
 - `content`: the plain CommonMark content.
 - `content_rendered`: the HTML or gemtext rendered variant of the content.
 

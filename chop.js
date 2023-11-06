@@ -110,13 +110,13 @@ function generatePath(filePath, variables) {
 }
 
 function prefixPath(path, variables) {
-  return `${variables.site_prefix || ""}${path}`;
+  return `${variables.site.prefix || ""}${path}`;
 }
 
 async function processContent(variables, templatePath) {
   const {converter: convert, educater: educate} = processorsForTemplate(templatePath);
 
-  const convertedContent = await convert(variables.content, { linkPrefix: variables.site_prefix });
+  const convertedContent = await convert(variables.content, { linkPrefix: variables.site.prefix || "" });
 
   let renderedContent = convertedContent;
 
