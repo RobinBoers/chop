@@ -51,7 +51,7 @@ Chop supports two types of static files:
 - **Output-dependent static files**:  
   These are different for each template. The stylesheet, for example. Output-dependent files are placed inside the `static` folder in the desired output directory (`templates/OUTPUT/static`).
 
-- Global static files:  
+- **Global static files**:  
   These are the same for every output. Images used in posts, for example. Global files are placed inside the `static` folder in the base directory.
 
 Images will be scaled down to a maximum resolution and then compressed. CSS and JavaScript are minified.
