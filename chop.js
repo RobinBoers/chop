@@ -187,6 +187,9 @@ function render(
   }
 }
 
+// Static files
+// Compresses & minifies
+
 async function copyStaticFiles(baseDirectory, destinationDirectory) {
   const staticDirectory = `${baseDirectory}/static`;
 

@@ -1,6 +1,6 @@
 # Chop
 
-Very minimal SSG generator based on Liquid-based templates. Written in ~200 lines of spaghetti JavaScript, utilizing the new Bun runtime.
+Very minimal SSG generator based on Liquid-based templates. Written in ~300 lines of spaghetti JavaScript, utilizing the new Bun runtime.
 
 ## Content
 
@@ -25,7 +25,7 @@ I'm working on the ability to use variables in content.
 
 ### Special variables
 
-These variables have special behavoir, if specified:
+These variables have special behavior, if specified:
 
 - `site.prefix`: if specified in global config, all (relative) URLs (including those in content) will be prefixed with this string.
 
@@ -46,8 +46,39 @@ In the case of an index, there is one more variable:
 
 ## Static files
 
-All files placed in the static directory inside an output subdirectory will be copied over to the corresponding subdirectory in the `dist` directory.
+Chop supports two types of static files:
+
+- **Output-dependent static files**:  
+  These are different for each template. The stylesheet, for example. Output-dependent files are placed inside the `static` folder in the desired output directory (`templates/OUTPUT/static`).
+
+- Global static files:  
+  These are the same for every output. Images used in posts, for example. Global files are placed inside the `static` folder in the base directory.
+
+Images will be scaled down to a maximum resolution and then compressed. CSS and JavaScript are minified.
 
 ## Renderers
 
-Depending on the extension of the template, your content will be translated either to HTML (`.html` or `.xml`), gemtext (`.gmi`) or kept as-is (`.txt`, `.md`, and everything else).
+Depending on the extension of the template, your content will be translated either to HTML (`.html` or `.xml`), gemtext (`.gmi`) or kept as-is (everything else).
+
+## Example configuration
+
+Here's the folder structure for a simple blog:
+
+```tree
+~/blog
+|- static
+   |- images
+      |- example.jpg
+      |- avatar.png
+|- templates
+   |- web
+      |- static
+         |- main.css
+      |- index.html
+      |- default.html
+   |- rss
+      |- index.xml
+|- config.yaml
+|- hello-world.txt
+|- index.txt
+```
