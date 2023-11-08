@@ -27,7 +27,10 @@ const PWD = await $`pwd`;
 const CONFIG_FILE = `${PWD}/config.yaml`;
 const TEMPLATES_DIR = `${PWD}/templates`;
 const DESTINATION_DIR = `${PWD}/dist`;
+const CACHE_DIR = `${PWD}/.cache`;
 const EXT = ".txt";
+
+if(!fs.existsSync(CACHE_DIR)) await $`mkdir ${CACHE_DIR}`;
 
 const availableOutputs = await $`ls ${TEMPLATES_DIR}`;
 const globalVariables = await parseConfigFile();
@@ -46,7 +49,7 @@ async function listContentFiles() {
   // ending with the configured extension for content,
   // but skips the config file and templates/dist directories.
 
-  return await listDirectory(PWD, `-type d ( -name ${path.basename(TEMPLATES_DIR)} -o -name ${path.basename(DESTINATION_DIR)} ) -prune -o -type f -name *${EXT} ! -name ${path.basename(CONFIG_FILE)} -print`);  
+  return await listDirectory(PWD, `-type d ( -name ${path.basename(TEMPLATES_DIR)} -o -name ${path.basename(DESTINATION_DIR)} -o -name ${path.basename(CACHE_DIR)} ) -prune -o -type f -name *${EXT} ! -name ${path.basename(CONFIG_FILE)} -print`);  
 }
 
 async function builtOutput(output) {
@@ -84,6 +87,7 @@ async function builtOutput(output) {
 
   // This is async, but because I don't do anything with the output, I don't await it.
   copyStaticFiles(templatesDirectory, destinationDirectory);
+  copyStaticFiles(PWD, destinationDirectory);
 }
 
 // Render pipeline
@@ -116,7 +120,9 @@ function prefixPath(path, variables) {
 async function processContent(variables, templatePath) {
   const {converter: convert, educater: educate} = processorsForTemplate(templatePath);
 
-  const convertedContent = await convert(variables.content, { linkPrefix: variables.site.prefix || "" });
+  const convertedContent = await convert(variables.content, { 
+    linkPrefix: variables.site.prefix || "" 
+  });
 
   let renderedContent = convertedContent;
 
@@ -181,9 +187,65 @@ function render(
   }
 }
 
-function copyStaticFiles(templatesDirectory, destinationDirectory) {
-  const staticFiles = `${templatesDirectory}/static`;
-  if (fs.existsSync(staticFiles)) $`cp -r ${staticFiles}/. ${destinationDirectory}`;  
+async function copyStaticFiles(baseDirectory, destinationDirectory) {
+  const staticDirectory = `${baseDirectory}/static`;
+
+  if (fs.existsSync(staticDirectory)) {
+    let staticFiles = await listDirectory(staticDirectory);
+
+    staticFiles.forEach((filePath) => {
+      const relativeSourcePath = path.relative(staticDirectory, filePath);
+      const cachedPath = `${CACHE_DIR}/${path.basename(relativeSourcePath)}`; 
+      const destinationPath = `${destinationDirectory}/${relativeSourcePath}`
+
+      copyStaticFile(filePath, destinationPath, cachedPath);
+    });
+  }
+}
+
+async function copyStaticFile(originalPath, destinationPath, cachedPath) {
+  if(originalPath.endsWith(".js")) await minifyJS(originalPath, cachedPath);
+  else if(originalPath.endsWith(".css")) await minifyCSS(originalPath, cachedPath);
+  else if(originalPath.endsWith(".png")) await optimizePNG(originalPath, cachedPath);
+  else if(originalPath.endsWith(".jpg")) await optimizeJPG(originalPath, cachedPath);
+  else if(originalPath.endsWith(".svg")) await optimizeSVG(originalPath, cachedPath);
+  else await $`cp ${originalPath} ${cachedPath}`;
+
+  await $`mkdir -p ${path.dirname(destinationPath)}`;
+  await $`cp ${cachedPath} ${destinationPath}`;
+}
+
+async function optimizePNG(originalPath, cachedPath) {
+  if(fs.existsSync(cachedPath)) return;
+
+  await scaleImageDown(originalPath, cachedPath);
+  await $`optipng -quiet -o7 -clobber ${cachedPath} -out ${cachedPath}.optipng`;
+  await $`pngcrush -s -reduce -brute ${cachedPath}.optipng ${cachedPath}`;
+}
+
+async function optimizeJPG(originalPath, cachedPath) {
+  if(fs.existsSync(cachedPath)) return;
+
+  await scaleImageDown(originalPath, cachedPath);
+  await $`jpegoptim --quiet --strip-all ${cachedPath}`;
+}
+
+async function scaleImageDown(originalPath, cachedPath) {
+  await $`convert ${originalPath} -resize 600x> ${cachedPath}`;
+}
+
+async function optimizeSVG(originalPath, cachedPath) {
+  if(fs.existsSync(cachedPath)) return;
+  
+  await $`svgo --quiet --multipass -i ${originalPath} -o ${cachedPath}`;
+}
+
+async function minifyJS(originalPath, cachedPath) {
+  await $`terser --compress --mangle -- ${originalPath} > ${cachedPath}`;
+}
+
+async function minifyCSS(originalPath, cachedPath) {
+  await $`minify ${originalPath} --output ${cachedPath}`;
 }
 
 // Content files

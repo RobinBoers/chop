@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "gemdown": "RobinBoers/gemdown#v2",
+    "remark-link-rewrite": "RobinBoers/remark-url-rewrite",
     "js-yaml": "^4.1.0",
     "liquidjs": "^10.9.2",
     "rehype-format": "^5.0.0",
@@ -15,7 +16,6 @@
     "remark": "^15.0.1",
     "remark-gemoji": "^8.0.0",
     "remark-gfm": "^4.0.0",
-    "remark-link-rewrite": "^1.0.7",
     "remark-rehype": "^11.0.0",
     "remark-unwrap-images": "^4.0.0",
     "smartypants": "^0.2.2",
