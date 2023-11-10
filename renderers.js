@@ -11,7 +11,7 @@ import remarkGfm from "remark-gfm";
 import remarkGemoji from "remark-gemoji";
 import remarkRehype from "remark-rehype";
 import remarkUnwrapImages from "remark-unwrap-images";
-import rehypeFormat from "rehype-format";
+import remarkUnwrapLiquid from "remark-unwrap-liquid";
 import rehypeSlug from "rehype-slug";
 import rehypeStringify from "rehype-stringify";
 
@@ -32,10 +32,10 @@ const md2html = async function(markdown, { linkPrefix }) {
     .use(remarkLinkRewrite, { replacer: prefixURL })
     .use(remarkGfm)
     .use(remarkGemoji)
-    .use(remarkRehype)
     .use(remarkUnwrapImages)
+    .use(remarkUnwrapLiquid)
+    .use(remarkRehype)
     .use(rehypeSlug)
-    .use(rehypeFormat)
     .use(rehypeStringify, {
       allowDangerousCharacters: true,
       allowDangerousHtml: true,
