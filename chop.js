@@ -59,7 +59,7 @@ async function builtOutput(output) {
 
   const templatesDirectory = `${TEMPLATES_DIR}/${output}`;
   const destinationDirectory = `${DESTINATION_DIR}/${output}`;
-  const templateEngine = new Liquid({ root: templatesDirectory });
+  const templateEngine = new Liquid({ root: templatesDirectory, partials: [templatesDirectory, TEMPLATES_DIR] });
 
   let pages = [];
 
