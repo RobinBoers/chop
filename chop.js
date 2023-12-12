@@ -41,7 +41,7 @@ const filePathsToProcess = await listContentFiles();
 const contentFiles = await Promise.all(filePathsToProcess.map(frontmatter));
 
 for (const output of availableOutputs) {
-  await builtOutput(output);
+  await buildOutput(output);
 }
 
 async function listContentFiles() {
@@ -52,7 +52,7 @@ async function listContentFiles() {
   return await listDirectory(PWD, `-type d ( -name ${path.basename(TEMPLATES_DIR)} -o -name ${path.basename(DESTINATION_DIR)} -o -name ${path.basename(CACHE_DIR)} ) -prune -o -type f -name *${EXT} ! -name ${path.basename(CONFIG_FILE)} -print`);  
 }
 
-async function builtOutput(output) {
+async function buildOutput(output) {
   await cleanOutput(output);
 
   console.log(`\n==> Building ${output}`)
