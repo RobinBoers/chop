@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+clean() {
+  rm -rf dist
+}
+
+build() {
+  clean
+  bun build ./chop.js --outdir ./dist
+  mv dist/chop.js dist/chop
+}
+
